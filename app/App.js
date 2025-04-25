@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { Ionicons } from "@expo/vector-icons"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as SecureStore from 'expo-secure-store'
 import { StatusBar } from "expo-status-bar"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
@@ -21,7 +21,7 @@ export default function App() {
 
   const loadCatches = async () => {
     try {
-      const savedCatches = await AsyncStorage.getItem("fishCatches")
+      const savedCatches = await SecureStore.getItemAsync("fishCatches")
       if (savedCatches) {
         setCatches(JSON.parse(savedCatches))
       }
@@ -33,7 +33,7 @@ export default function App() {
   const saveCatch = async (newCatch) => {
     try {
       const updatedCatches = [...catches, newCatch]
-      await AsyncStorage.setItem("fishCatches", JSON.stringify(updatedCatches))
+      await SecureStore.setItemAsync("fishCatches", JSON.stringify(updatedCatches))
       setCatches(updatedCatches)
     } catch (error) {
       console.error("Failed to save catch:", error)
@@ -43,7 +43,7 @@ export default function App() {
   const deleteCatch = async (catchId) => {
     try {
       const updatedCatches = catches.filter(fishCatch => fishCatch.id !== catchId)
-      await AsyncStorage.setItem("fishCatches", JSON.stringify(updatedCatches))
+      await SecureStore.setItemAsync("fishCatches", JSON.stringify(updatedCatches))
       setCatches(updatedCatches)
     } catch (error) {
       console.error("Failed to delete catch:", error)
