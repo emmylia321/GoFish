@@ -14,14 +14,14 @@ const developerMessage = {
 };
 
 // Validate authentication token
-const validateAuth = (req) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-  const token = authHeader.split(' ')[1];
-  return token === process.env.OPENAI_API_KEY;
-};
+// const validateAuth = (req) => {
+//   const authHeader = req.headers.authorization;
+//   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+//     return false;
+//   }
+//   const token = authHeader.split(' ')[1];
+//   return token === process.env.OPENAI_API_KEY;
+// };
 
 module.exports = async function handler(req, res) {
   // Add CORS headers
