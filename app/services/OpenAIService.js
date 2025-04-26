@@ -14,7 +14,6 @@ if (!API_URL) {
   throw new Error('EXPO_PUBLIC_API_URL environment variable is required');
 }
 
-console.log('Using API URL:', API_URL); // Debug log
 
 axios.interceptors.request.use((config) => {
   // Validate request
@@ -26,7 +25,6 @@ axios.interceptors.request.use((config) => {
 
 export const analyzeImage = async (base64Image) => {
   try {
-    console.log('Making request to:', `${API_URL}/api/analyze-fish`); // Debug log
     const response = await axios.post(`${API_URL}/api/analyze-fish`, {
       base64Image
     });
