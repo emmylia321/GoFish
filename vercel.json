@@ -1,15 +1,25 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/analyze-fish.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/test.js": {
+      "memory": 128,
+      "maxDuration": 5
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/analyze-fish",
+      "methods": ["GET", "POST", "OPTIONS"],
       "dest": "/api/analyze-fish.js"
+    },
+    {
+      "src": "/api/test",
+      "methods": ["GET"],
+      "dest": "/api/test.js"
     }
   ]
 } 

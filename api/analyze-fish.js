@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -13,38 +13,62 @@ const developerMessage = {
   ]
 };
 
-export default async function handler(req, res) {
+// Validate authentication token
+const validateAuth = (req) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return false;
+  }
+  const token = authHeader.split(' ')[1];
+  return token === process.env.OPENAI_API_KEY;
+};
+
+module.exports = async function handler(req, res) {
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
   // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
+  }
+
+  // Handle GET request for testing
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      status: 'API is running',
+      openaiKeySet: !!process.env.OPENAI_API_KEY,
+      method: req.method,
+      timestamp: new Date().toISOString()
+    });
   }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // Verify OpenAI API key is set
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OpenAI API key is not set');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
+  // Validate authentication
+  if (!validateAuth(req)) {
+    return res.status(401).json({ error: 'Unauthorized - Invalid or missing authentication token' });
+  }
 
+  try {
     const { base64Image } = req.body;
 
     if (!base64Image) {
       return res.status(400).json({ error: 'Image data is required' });
     }
 
-    console.log('Making request to OpenAI API...');
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key is not set');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const response = await axios.post(OPENAI_API_URL, {
-      model: "gpt-4-vision-preview",  // Updated to correct model name
+      model: "gpt-4-vision-preview",
       messages: [
         developerMessage,
         {
@@ -69,7 +93,6 @@ export default async function handler(req, res) {
       }
     });
 
-    console.log('Received response from OpenAI');
     const content = response.data.choices[0].message.content;
     
     try {
@@ -78,31 +101,22 @@ export default async function handler(req, res) {
       const parsedResponse = JSON.parse(jsonContent);
       
       if (!parsedResponse.species || !Array.isArray(parsedResponse.facts)) {
-        console.error('Invalid response structure:', parsedResponse);
         throw new Error('Invalid response structure');
       }
       
       return res.status(200).json(parsedResponse);
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
-      console.log('Raw content:', content);
       return res.status(200).json({
         species: 'Unknown',
         facts: ['This does not look like a fish to me']
       });
     }
   } catch (error) {
-    console.error('Error processing request:', error);
-    console.error('Error details:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-    });
-    
+    console.error('Error processing request:', error.response?.data || error.message);
     return res.status(500).json({ 
       error: 'Failed to analyze image',
-      details: error.response?.data || error.message,
-      status: error.response?.status
+      details: error.response?.data || error.message 
     });
   }
-} 
+}; 
