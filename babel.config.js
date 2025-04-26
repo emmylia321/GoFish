@@ -1,13 +1,18 @@
 module.exports = {
-  presets: ['module:metro-react-native-babel-preset'],
+  presets: ['module:@react-native/babel-preset'],
   plugins: [
+    'react-native-reanimated/plugin',
     ["module:react-native-dotenv", {
-      "moduleName": "react-native-dotenv",
+      "moduleName": "@env",
       "path": ".env",
       "blacklist": null,
-      "whitelist": ["OPENAI_API_KEY"],
-      "safe": true,
-      "allowUndefined": false
+      "whitelist": null,
+      "safe": false,
+      "allowUndefined": true
     }]
-  ]
-}; 
+  ],
+  overrides: [{
+    test: fileName => !fileName.includes('node_modules/react-native-maps'),
+    plugins: [["@babel/plugin-transform-private-methods", { "loose": true }]]
+    }],
+};

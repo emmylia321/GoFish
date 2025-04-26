@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { StyleSheet, View, Text, Image, Dimensions, TouchableOpacity } from "react-native"
-import MapView, { Marker, Callout } from "react-native-maps"
+import { StyleSheet, View, Text, Dimensions, TouchableOpacity } from "react-native"
+import MapView from "react-native-maps"
 import { Ionicons } from "@expo/vector-icons"
 import * as Location from "expo-location"
 
@@ -39,12 +39,32 @@ const darkMapStyle = [
 export default function MapScreen({ catches }) {
   const [region, setRegion] = useState(null)
   const [selectedCatch, setSelectedCatch] = useState(null)
+  const [markerPositions, setMarkerPositions] = useState([])
   const mapRef = useRef(null)
+
+  // Convert lat/lng to screen coordinates
+  const calculateMarkerPositions = () => {
+    if (!mapRef.current || !catches) return;
+    
+    const positions = catches.map(fishCatch => {
+      const point = mapRef.current.coordinateForPoint({
+        latitude: fishCatch.location.latitude,
+        longitude: fishCatch.location.longitude
+      });
+      return {
+        ...fishCatch,
+        screenX: point.x,
+        screenY: point.y
+      };
+    });
+    
+    setMarkerPositions(positions);
+  };
 
   useEffect(() => {
     // Set initial region to user's current location or first catch location
     ;(async () => {
-      if (catches.length > 0) {
+      if (catches?.length > 0) {
         // If there are catches, center on the most recent one
         const mostRecent = catches[catches.length - 1]
         setRegion({
@@ -116,39 +136,42 @@ export default function MapScreen({ catches }) {
         initialRegion={region} 
         showsUserLocation={true}
         customMapStyle={darkMapStyle}
-      >
-        {catches.map((fishCatch) => (
-          <Marker
-            key={fishCatch.id}
-            coordinate={{
-              latitude: fishCatch.location.latitude,
-              longitude: fishCatch.location.longitude,
-            }}
-            onPress={() => setSelectedCatch(fishCatch)}
-          >
-            <View style={styles.markerContainer}>
-              <Ionicons name="fish" size={24} color="#0891b2" />
-            </View>
-            <Callout tooltip>
-              <View style={styles.calloutContainer}>
-                <Image source={{ uri: fishCatch.image }} style={styles.calloutImage} />
-                <View style={styles.calloutTextContainer}>
-                  <Text style={styles.calloutTitle}>{fishCatch.species}</Text>
-                  <Text style={styles.calloutDate}>{new Date(fishCatch.timestamp).toLocaleDateString()}</Text>
-                </View>
-              </View>
-            </Callout>
-          </Marker>
-        ))}
-      </MapView>
+        onRegionChangeComplete={calculateMarkerPositions}
+      />
+
+      {/* Custom Markers */}
+      {markerPositions.map((fishCatch) => (
+        <TouchableOpacity
+          key={fishCatch.id}
+          style={[
+            styles.markerContainer,
+            {
+              left: fishCatch.screenX - 15,
+              top: fishCatch.screenY - 15,
+            }
+          ]}
+          onPress={() => setSelectedCatch(fishCatch)}
+        >
+          <Ionicons name="fish" size={24} color="#0891b2" />
+        </TouchableOpacity>
+      ))}
 
       <TouchableOpacity style={styles.locationButton} onPress={goToUserLocation}>
         <Ionicons name="locate" size={24} color="#0891b2" />
       </TouchableOpacity>
 
-      {catches.length === 0 && (
+      {catches?.length === 0 && (
         <View style={styles.noCatchesContainer}>
           <Text style={styles.noCatchesText}>No catches yet. Take some fish photos to see them on the map!</Text>
+        </View>
+      )}
+
+      {selectedCatch && (
+        <View style={styles.selectedCatchContainer}>
+          <Text style={styles.selectedCatchTitle}>{selectedCatch.species}</Text>
+          <Text style={styles.selectedCatchDate}>
+            {new Date(selectedCatch.timestamp).toLocaleDateString()}
+          </Text>
         </View>
       )}
     </View>
@@ -171,40 +194,13 @@ const styles = StyleSheet.create({
     height: Dimensions.get("window").height,
   },
   markerContainer: {
+    position: 'absolute',
     backgroundColor: "#1E1E1E",
     borderRadius: 20,
     padding: 5,
     borderWidth: 2,
     borderColor: "#81D4FA",
-  },
-  calloutContainer: {
-    width: 200,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  calloutImage: {
-    width: "100%",
-    height: 120,
-    borderRadius: 5,
-    marginBottom: 5,
-  },
-  calloutTextContainer: {
-    alignItems: "center",
-  },
-  calloutTitle: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#81D4FA",
-  },
-  calloutDate: {
-    fontSize: 12,
-    color: "#BDBDBD",
+    zIndex: 1000,
   },
   locationButton: {
     position: "absolute",
@@ -236,4 +232,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#BDBDBD",
   },
+  selectedCatchContainer: {
+    position: "absolute",
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(30, 30, 30, 0.9)",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "center",
+  },
+  selectedCatchTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#81D4FA",
+    marginBottom: 5,
+  },
+  selectedCatchDate: {
+    fontSize: 12,
+    color: "#BDBDBD",
+  }
 })

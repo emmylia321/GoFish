@@ -1,4 +1,4 @@
-import { OPENAI_API_KEY } from 'react-native-dotenv';
+import { OPENAI_API_KEY } from '@env';
 
 // Debug logs
 console.log('Environment variables debug:');
