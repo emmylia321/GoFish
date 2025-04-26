@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -13,7 +13,7 @@ const developerMessage = {
   ]
 };
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,8 +22,7 @@ module.exports = async function handler(req, res) {
 
   // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
@@ -31,19 +30,21 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // Verify OpenAI API key is set
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key is not set');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const { base64Image } = req.body;
 
     if (!base64Image) {
       return res.status(400).json({ error: 'Image data is required' });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OpenAI API key is not set');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-
+    console.log('Making request to OpenAI API...');
     const response = await axios.post(OPENAI_API_URL, {
-      model: "gpt-4o-mini",
+      model: "gpt-4-vision-preview",  // Updated to correct model name
       messages: [
         developerMessage,
         {
@@ -68,6 +69,7 @@ module.exports = async function handler(req, res) {
       }
     });
 
+    console.log('Received response from OpenAI');
     const content = response.data.choices[0].message.content;
     
     try {
@@ -76,22 +78,31 @@ module.exports = async function handler(req, res) {
       const parsedResponse = JSON.parse(jsonContent);
       
       if (!parsedResponse.species || !Array.isArray(parsedResponse.facts)) {
+        console.error('Invalid response structure:', parsedResponse);
         throw new Error('Invalid response structure');
       }
       
       return res.status(200).json(parsedResponse);
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
+      console.log('Raw content:', content);
       return res.status(200).json({
         species: 'Unknown',
         facts: ['This does not look like a fish to me']
       });
     }
   } catch (error) {
-    console.error('Error processing request:', error.response?.data || error.message);
+    console.error('Error processing request:', error);
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    
     return res.status(500).json({ 
       error: 'Failed to analyze image',
-      details: error.response?.data || error.message 
+      details: error.response?.data || error.message,
+      status: error.response?.status
     });
   }
-}; 
+} 
